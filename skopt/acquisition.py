@@ -48,7 +48,8 @@ def _gaussian_acquisition(X, model, y_opt=None, acq_func="LCB",
 
     elif acq_func in ["EI", "PI", "EIps", "PIps"]:
         if acq_func in ["EI", "EIps"]:
-            func_and_grad = gaussian_ei(X, model, y_opt, xi, return_grad)
+            weights = acq_func_kwargs.get("weights", None)
+            func_and_grad = gaussian_ei(X, model, y_opt, xi, return_grad, weights)
         else:
             func_and_grad = gaussian_pi(X, model, y_opt, xi, return_grad)
 
@@ -221,7 +222,7 @@ def gaussian_pi(X, model, y_opt=0.0, xi=0.01, return_grad=False):
     return values
 
 
-def gaussian_ei(X, model, y_opt=0.0, xi=0.01, return_grad=False):
+def gaussian_ei(X, model, y_opt=0.0, xi=0.01, return_grad=False, weights=None):
     """
     Use the expected improvement to calculate the acquisition values.
 
@@ -302,4 +303,10 @@ def gaussian_ei(X, model, y_opt=0.0, xi=0.01, return_grad=False):
         grad = exploit_grad + explore_grad
         return values, grad
 
+    if weights:
+        assigned_weights = []
+        for row in X:
+            assigned_weights.append(weights[(row[0], row[1])])
+        values = values * np.array(assigned_weights)
+    
     return values
