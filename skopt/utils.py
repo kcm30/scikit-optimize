@@ -476,10 +476,11 @@ def normalize_dimensions(dimensions):
         # recreate the space and explicitly set transform to "identity"
         # this is a special case for GP based regressors
         for dimension in space:
-            transformed_dimensions.append(Categorical(dimension.categories,
-                                                      dimension.prior,
-                                                      name=dimension.name,
-                                                      transform="identity"))
+            transformed_dimensions.append(dimension)
+            #transformed_dimensions.append(Categorical(dimension.categories,
+            #                                          dimension.prior,
+            #                                          name=dimension.name,
+            #                                          transform="identity"))
 
     else:
         for dimension in space.dimensions:

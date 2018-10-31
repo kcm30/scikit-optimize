@@ -802,6 +802,7 @@ class Space(object):
 class CoordinateDimension(Categorical):
     def __init__(self, coordinate_list, name=None):
         self.name = name
+        self.categories = len(coordinate_list[0])
         self.coordinates = coordinate_list
         self.transformer = Identity()
 
@@ -844,7 +845,7 @@ class CoordinateDimension(Categorical):
 
     @property
     def transformed_size(self):
-        return len(self.coordinates)
+        return len(self.coordinates[0])
 
     def distance(self, a, b):
         """Compute euclidean distance between point `a` and `b`.
