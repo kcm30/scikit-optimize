@@ -398,6 +398,7 @@ class Optimizer(object):
             if abs(min_delta_x) <= 1e-8:
                 warnings.warn("The objective has been evaluated "
                               "at this point before.")
+                
 
             # return point computed from last call to tell()
             return next_x
@@ -491,9 +492,10 @@ class Optimizer(object):
 
             # even with BFGS as optimizer we want to sample a large number
             # of points and then pick the best ones as starting points
-            X = self.space.transform(self.space.rvs(
-                n_samples=self.n_points, random_state=self.rng))
-
+            # the work around here is kinda hacky
+            proposed_X = self.space.rvs(n_samples=self.n_points, random_state=self.rng)
+            filtered_X = [x for x in proposed_X if ((x not in self.Xi) and (not ([[np.array(x[0])]] == np.array(self.Xi)).any()))]
+            X = self.space.transform(filtered_X)
             self.next_xs_ = []
             for cand_acq_func in self.cand_acq_funcs_:
                 values = _gaussian_acquisition(
