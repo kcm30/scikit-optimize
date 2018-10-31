@@ -797,3 +797,67 @@ class Space(object):
             distance += dim.distance(a, b)
 
         return distance
+
+    
+class CoordinateDimension(Categorical):
+    def __init__(self, coordinate_list, name=None):
+        self.name = name
+        self.coordinates = coordinate_list
+        self.transformer = Identity()
+
+    def rvs(self, n_samples=1, random_state=None):
+        # rvs needs to suggest a random point from our set of coordinates
+        rng = check_random_state(random_state)
+        samples = np.random.choice(self.size, size=n_samples, replace=True)
+        return [self.coordinates[i] for i in samples]
+
+    def __repr__(self):
+        return self.name
+
+    def __eq__(self, other):
+        # Two coordinatedimension instances are equal if they have 
+        # equivalent sets of coordinates
+        return all(d in other for d in self) & all(d in self for d in other)
+
+    def __contains__(self, point):
+        # Check that the lat coordinate and the lon exist in the same pair
+        # we use np.isclose because to get around floating point precision errors
+        # the except block catches something weird where the optimize starts suggesting
+        # points in a different shaped list
+        # this also does not yet scale to more than two dimensions
+        try:
+            lat_index = np.argwhere(np.isclose(np.array(self.coordinates)[:, 0], point[0]))
+            lon_index = np.argwhere(np.isclose(np.array(self.coordinates)[:, 1], point[1]))
+            return (np.isin(lat_index, lon_index)).any()
+        except ValueError:
+            lat_index = np.argwhere(np.isclose(np.array(self.coordinates)[:, 0], point[0][0]))
+            lon_index = np.argwhere(np.isclose(np.array(self.coordinates)[:, 1], point[0][1]))
+            return (np.isin(lat_index, lon_index)).any()
+
+    @property
+    def size(self):
+        return len(self.coordinates)
+    
+    @property
+    def transformed_bounds(self):
+        return self.coordinates
+
+    @property
+    def transformed_size(self):
+        return len(self.coordinates)
+
+    def distance(self, a, b):
+        """Compute euclidean distance between point `a` and `b`.
+        This isn't quite right for the Earth, but it's good enough
+        Parameters
+        ----------
+        * `a` (x0, y0)
+            First point.
+
+        * `b` (x1, y1)
+            Second point.
+        """
+        if not (([a] in self) & (b in self)):
+            raise RuntimeError("Can only compute distance for values within "
+                               "the space, not %s and %s." % (a, b))
+        return np.linalg.norm(np.array(a)-np.array(b))
