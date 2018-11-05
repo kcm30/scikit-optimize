@@ -1,7 +1,7 @@
 import numpy as np
 import warnings
 
-from scipy.stats import norm
+from scipy.stats import norm, logistic
 
 
 def gaussian_acquisition_1D(X, model, y_opt=None, acq_func="LCB",
@@ -46,12 +46,15 @@ def _gaussian_acquisition(X, model, y_opt=None, acq_func="LCB",
         else:
             acq_vals = func_and_grad
 
-    elif acq_func in ["EI", "PI", "EIps", "PIps"]:
+    elif acq_func in ["EI", "PI", "EIps", "PIps", "custom"]:
         if acq_func in ["EI", "EIps"]:
             weights = acq_func_kwargs.get("weights", None)
             func_and_grad = gaussian_ei(X, model, y_opt, xi, return_grad, weights)
-        else:
+        elif acq_func in ["PI", "PIps"]:
             func_and_grad = gaussian_pi(X, model, y_opt, xi, return_grad)
+        else:
+            weights = acq_func_kwargs.get("weights", None)
+            func_and_grad = gaussian_custom(X, model, y_opt, xi, weights) 
 
         if return_grad:
             acq_vals = -func_and_grad[0]
@@ -303,6 +306,77 @@ def gaussian_ei(X, model, y_opt=0.0, xi=0.01, return_grad=False, weights=None):
         grad = exploit_grad + explore_grad
         return values, grad
 
+    if weights:
+        assigned_weights = []
+        for row in X:
+            assigned_weights.append(weights[(row[0], row[1])])
+        values = values * np.array(assigned_weights)
+    
+    return values
+
+
+def gaussian_custom(X, model, y_opt=0.0, xi=0.01, weights=None):
+    """
+    Use this custom acquistion function to calculate the acquisition values.
+
+    We just want good regions - don't really care about improvement
+    Though what does this mean for our exploration? Hm
+
+    Note that the value returned by this function should be maximized to
+    obtain the ``X`` with maximum improvement.
+
+    Parameters
+    ----------
+    * `X` [array-like, shape=(n_samples, n_features)]:
+        Values where the acquisition function should be computed.
+
+    * `model` [sklearn estimator that implements predict with ``return_std``]:
+        The fit estimator that approximates the function through the
+        method ``predict``.
+        It should have a ``return_std`` parameter that returns the standard
+        deviation.
+
+    * `y_opt` [float, default 0]:
+        Previous minimum value which we would like to improve upon.
+
+    * `xi`: [float, default=0.01]:
+        Controls how much improvement one wants over the previous best
+        values. Useful only when ``method`` is set to "EI"
+
+    * `return_grad`: [boolean, optional]:
+        Whether or not to return the grad. Implemented only for the case where
+        ``X`` is a single sample.
+
+    Returns
+    -------
+    * `values`: [array-like, shape=(X.shape[0],)]:
+        Acquisition function values computed at X.
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+
+        mu, std = model.predict(X, return_std=True)
+
+    values = np.zeros_like(mu)
+    mask = std > 0
+
+    # we want to exploit large sample regions
+    # and explore small sample regions or like not
+    # too small sample regions
+    # what's the best way to do that
+    #prob_negative = abs(.5 - norm.cdf(0, loc=mu, scale=std))
+    #exploit = mu * prob_negative * weights
+    # so like this is a fine term for exploit
+    # need to work out explore term and figure out how to choose
+    # between the two
+
+    #pdf = norm.pdf(0, loc=mu, scale=std)
+    #explore = std[mask] * pdf
+    #values[mask] = exploit + explore
+
+    # for now just do prob(positive) * mu
+    prob_positive = 1 - norm.cdf(0, loc=mu, scale=std)
+    values = mu * prob_positive
     if weights:
         assigned_weights = []
         for row in X:
