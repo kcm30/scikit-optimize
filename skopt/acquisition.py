@@ -1,3 +1,4 @@
+from __future__ import division
 import numpy as np
 import warnings
 
@@ -46,7 +47,7 @@ def _gaussian_acquisition(X, model, y_opt=None, acq_func="LCB",
         else:
             acq_vals = func_and_grad
 
-    elif acq_func in ["EI", "PI", "EIps", "PIps", "custom", "random"]:
+    elif acq_func in ["EI", "PI", "EIps", "PIps", "custom", "random", "explore_exploit"]:
         if acq_func in ["EI", "EIps"]:
             weights = acq_func_kwargs.get("weights", None)
             func_and_grad = gaussian_ei(X, model, y_opt, xi, return_grad, weights)
@@ -55,6 +56,10 @@ def _gaussian_acquisition(X, model, y_opt=None, acq_func="LCB",
         elif acq_func == "custom":
             weights = acq_func_kwargs.get("weights", None)
             func_and_grad = gaussian_custom(X, model, y_opt, xi, weights)
+        elif acq_func == "explore_exploit":
+            weights = acq_func_kwargs.get("weights", None)
+            eps = acq_func_kwargs.get("eps", .2)
+            func_and_grad = gaussian_explore_exploit(X, model, y_opt, xi, eps, kappa, weights)
         else:
             func_and_grad = gaussian_random(X, model)
 
@@ -385,6 +390,62 @@ def gaussian_custom(X, model, y_opt=0.0, xi=0.01, weights=None):
             assigned_weights.append(weights[(row[0], row[1])])
         values = values * np.array(assigned_weights)
     
+    return values
+
+
+def gaussian_explore_exploit(X, model, y_opt=0.0, xi=0.01, eps=.2, kappa=1.96, weights=None):
+    """
+    Use this custom acquistion function to calculate the acquisition values.
+
+    We just want good regions - don't really care about improvement
+    Though what does this mean for our exploration? Hm
+
+    Note that the value returned by this function should be maximized to
+    obtain the ``X`` with maximum improvement.
+
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+
+        mu, std = model.predict(X, return_std=True)
+
+    values = np.zeros_like(mu)
+    mask = std > 0
+
+    # we want to exploit large sample regions
+    # and explore small sample regions or like not
+    # too small sample regions
+    # what's the best way to do that
+    #prob_negative = abs(.5 - norm.cdf(0, loc=mu, scale=std))
+    #exploit = mu * prob_negative * weights
+    # so like this is a fine term for exploit
+    # need to work out explore term and figure out how to choose
+    # between the two
+
+    #pdf = norm.pdf(0, loc=mu, scale=std)
+    #explore = std[mask] * pdf
+    #values[mask] = exploit + explore
+    if weights:
+        assigned_weights = []
+        for row in X:
+            assigned_weights.append(weights[(row[0], row[1])])
+            
+
+    choice = np.random.uniform(0, 1)
+    if choice <= eps:
+        # explore - lcb weighted by 1 / sample size
+        values = mu - kappa * std
+        if weights:
+            values = values * 1 / np.array(assigned_weights)
+
+    else:
+            # for now just do prob(positive) * mu
+        prob_positive = 1 - norm.cdf(0, loc=mu, scale=std)
+        values = mu * prob_positive
+        if weights:
+            values = values * np.array(assigned_weights)
+
+        #exploit
     return values
 
 
