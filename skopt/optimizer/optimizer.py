@@ -287,7 +287,7 @@ class Optimizer(object):
 
         return optimizer
 
-    def ask(self, n_points=None, strategy="cl_min"):
+    def ask(self, n_points=None, strategy="cl_min", use_coords=False):
         """Query point or multiple points at which objective should be evaluated.
 
         * `n_points` [int or None, default=None]:
@@ -347,7 +347,10 @@ class Optimizer(object):
 
         X = []
         for i in range(n_points):
-            x = opt.ask()
+            if use_coords:
+                x = [opt.ask()]
+            else:
+                x = opt.ask()
             X.append(x)
 
             ti_available = "ps" in self.acq_func and len(opt.yi) > 0
