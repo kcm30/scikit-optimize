@@ -406,7 +406,7 @@ class Optimizer(object):
             # return point computed from last call to tell()
             return next_x
 
-    def tell(self, x, y, fit=True):
+    def tell(self, x, y, fit=True, no_repeats=False):
         """Record an observation (or several) of the objective function.
 
         Provide values of the objective function at points suggested by `ask()`
@@ -444,9 +444,9 @@ class Optimizer(object):
                 y = list(y)
                 y[1] = log(y[1])
 
-        return self._tell(x, y, fit=fit)
+        return self._tell(x, y, fit=fit, no_repeats=no_repeats)
 
-    def _tell(self, x, y, fit=True):
+    def _tell(self, x, y, fit=True, no_repeats=False):
         """Perform the actual work of incorporating one or more new points.
         See `tell()` for the full description.
 
@@ -497,8 +497,12 @@ class Optimizer(object):
             # of points and then pick the best ones as starting points
             # the work around here is kinda hacky
             proposed_X = self.space.rvs(n_samples=self.n_points, random_state=self.rng)
-            filtered_X = [x for x in proposed_X if ((x not in self.Xi) and (not ([[np.array(x[0])]] == np.array(self.Xi)).any()))]
-            X = self.space.transform(filtered_X)
+            if no_repeats:
+                filtered_X = [x for x in proposed_X if ((x not in self.Xi) and (not ([[np.array(x[0])]] == np.array(self.Xi)).any()))]
+                X = self.space.transform(filtered_X)
+            else:
+                X = self.space.transform(proposed_X)
+                
             self.next_xs_ = []
             for cand_acq_func in self.cand_acq_funcs_:
                 values = _gaussian_acquisition(
