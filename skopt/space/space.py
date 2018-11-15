@@ -826,15 +826,20 @@ class CoordinateDimension(Categorical):
         # the except block catches something weird where the optimize starts suggesting
         # points in a different shaped list
         # this also does not yet scale to more than two dimensions
-        try:
-            lat_index = np.argwhere(np.isclose(np.array(self.coordinates)[:, 0], point[0]))
-            lon_index = np.argwhere(np.isclose(np.array(self.coordinates)[:, 1], point[1]))
-            return (np.isin(lat_index, lon_index)).any()
-        except ValueError:
-            lat_index = np.argwhere(np.isclose(np.array(self.coordinates)[:, 0], point[0][0]))
-            lon_index = np.argwhere(np.isclose(np.array(self.coordinates)[:, 1], point[0][1]))
-            return (np.isin(lat_index, lon_index)).any()
+        # does this even matter as long as we sample correctly?
+        if (type(point[0]) is np.ndarray) | (type(point[0]) is list):
+            point = point[0]
+        
+        index = np.argwhere(np.isclose(np.array(self.coordinates)[:, 0], point[0]))
+        for i in range(1, len(point)):
+            new_index = np.argwhere(np.isclose(np.array(self.coordinates)[:, i], point[i]))
+            if len(np.intersect1d(index, new_index)) == 0:
+                return False
+            else:
+                index = new_index.copy()
+        return True
 
+    
     @property
     def size(self):
         return len(self.coordinates)
