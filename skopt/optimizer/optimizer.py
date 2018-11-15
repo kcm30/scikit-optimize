@@ -498,7 +498,8 @@ class Optimizer(object):
             # the work around here is kinda hacky
             proposed_X = self.space.rvs(n_samples=self.n_points, random_state=self.rng)
             if no_repeats:
-                filtered_X = [x for x in proposed_X if ((x not in self.Xi) and (not ([[np.array(x[0])]] == np.array(self.Xi)).any()))]
+                filtered_X = [x for x in proposed_X if (x not in self.Xi)]
+                second_filtered_X = [x for x in filtered_X if not ([[np.array(x[0])]] == np.array(self.Xi)).all()]
                 X = self.space.transform(filtered_X)
             else:
                 X = self.space.transform(proposed_X)
