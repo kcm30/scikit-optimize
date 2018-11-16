@@ -406,7 +406,7 @@ class Optimizer(object):
             # return point computed from last call to tell()
             return next_x
 
-    def tell(self, x, y, fit=True, no_repeats=False):
+    def tell(self, x, y, fit=True, no_repeats=False, use_coords=False):
         """Record an observation (or several) of the objective function.
 
         Provide values of the objective function at points suggested by `ask()`
@@ -498,8 +498,7 @@ class Optimizer(object):
             # the work around here is kinda hacky
             proposed_X = self.space.rvs(n_samples=self.n_points, random_state=self.rng)
             if no_repeats:
-                filtered_X = [x for x in proposed_X if (x not in self.Xi)]
-                second_filtered_X = [x for x in filtered_X if not ([[np.array(x[0])]] == np.array(self.Xi)).all()]
+                filtered_X = [x for x in proposed_X if ((x not in self.Xi) & ([x] not in self.Xi))]
                 X = self.space.transform(filtered_X)
             else:
                 X = self.space.transform(proposed_X)
@@ -558,6 +557,9 @@ class Optimizer(object):
             # note the need for [0] at the end
             self._next_x = self.space.inverse_transform(
                 next_x.reshape((1, -1)))[0]
+
+            if type(self._next_x[0]) is np.ndarray:
+                self._next_x = [self._next_x[0].tolist()]
 
         # Pack results
         return create_result(self.Xi, self.yi, self.space, self.rng,
