@@ -17,7 +17,7 @@ from .learning.gaussian_process.kernels import ConstantKernel
 from .learning.gaussian_process.kernels import HammingKernel
 from .learning.gaussian_process.kernels import Matern
 
-from .space import Space, Categorical, Integer, Real, Dimension
+from .space import Space, Categorical, Integer, Real, Dimension, CoordinateDimension
 
 __all__ = (
     "load",
@@ -318,13 +318,14 @@ def cook_estimator(base_estimator, space=None, **kwargs):
             space = Space(normalize_dimensions(space.dimensions))
             n_dims = space.transformed_n_dims
             is_cat = space.is_categorical
+            has_coords = any([isinstance(dim, CoordinateDimension) for dim in space.dimensions])
 
         else:
             raise ValueError("Expected a Space instance, not None.")
 
         cov_amplitude = ConstantKernel(1.0, (0.01, 1000.0))
         # only special if *all* dimensions are categorical
-        if is_cat:
+        if is_cat and not has_coords:
             other_kernel = HammingKernel(length_scale=np.ones(n_dims))
         else:
             other_kernel = Matern(

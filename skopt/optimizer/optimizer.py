@@ -559,8 +559,10 @@ class Optimizer(object):
                 next_x.reshape((1, -1)))[0]
 
             if type(self._next_x[0]) is np.ndarray:
+		next_copy = [z for z in	self._next_x]
                 self._next_x = [self._next_x[0].tolist()]
-
+		for element in next_copy[1:]:
+                    self._next_x.append(element)
         # Pack results
         return create_result(self.Xi, self.yi, self.space, self.rng,
                              models=self.models)
