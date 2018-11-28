@@ -846,7 +846,11 @@ class CoordinateDimension(Categorical):
     
     @property
     def transformed_bounds(self):
-        return self.coordinates
+        bounds = []
+        for i in range(len(self.coordinates[0])):
+            coord = np.array(self.coordinates)[:, i]
+            bounds.append((min(coord), max(coord)))
+        return bounds
 
     @property
     def transformed_size(self):
